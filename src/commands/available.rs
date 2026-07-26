@@ -4,11 +4,13 @@ use anyhow::Result;
 pub fn list_available_versions() -> Result<()> {
     let github_client = GitHubClient::new(None);
 
-    match github_client.get_releases("Ivan-Pasco", "clean-language-compiler") {
+    match github_client.get_releases("Ivan-Pasco", "clean-language-compiler-old") {
         Ok(releases) => {
             if releases.is_empty() {
                 println!("No releases available yet.");
-                println!("Check: https://github.com/Ivan-Pasco/clean-language-compiler/releases");
+                println!(
+                    "Check: https://github.com/Ivan-Pasco/clean-language-compiler-old/releases"
+                );
             } else {
                 println!("Available versions:");
 
@@ -41,7 +43,7 @@ pub fn list_available_versions() -> Result<()> {
         }
         Err(e) => {
             println!("Unable to fetch releases: {e}");
-            println!("Check: https://github.com/Ivan-Pasco/clean-language-compiler/releases");
+            println!("Check: https://github.com/Ivan-Pasco/clean-language-compiler-old/releases");
         }
     }
 

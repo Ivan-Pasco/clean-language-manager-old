@@ -15,7 +15,7 @@ pub fn install_version(version: &str, with_frame: bool, no_frame: bool) -> Resul
     // Resolve version (handle "latest") first and normalize to GitHub format
     let github_version = if version == "latest" {
         println!("Fetching latest release...");
-        match github_client.get_latest_release("Ivan-Pasco", "clean-language-compiler") {
+        match github_client.get_latest_release("Ivan-Pasco", "clean-language-compiler-old") {
             Ok(release) => {
                 println!("Latest version: {}", release.tag_name);
                 release.tag_name
@@ -24,7 +24,7 @@ pub fn install_version(version: &str, with_frame: bool, no_frame: bool) -> Resul
                 println!("⚠️  Unable to fetch latest version from GitHub: {e}");
                 println!("   This may be because the repository doesn't have releases yet.");
                 println!("   Please specify a specific version or check the repository:");
-                println!("   https://github.com/Ivan-Pasco/clean-language-compiler/releases");
+                println!("   https://github.com/Ivan-Pasco/clean-language-compiler-old/releases");
                 return Ok(());
             }
         }
@@ -52,7 +52,7 @@ pub fn install_version(version: &str, with_frame: bool, no_frame: bool) -> Resul
     println!("Fetching release {github_version}...");
     let release = match github_client.get_release_by_tag(
         "Ivan-Pasco",
-        "clean-language-compiler",
+        "clean-language-compiler-old",
         &github_version,
     ) {
         Ok(release) => release,
@@ -66,7 +66,7 @@ pub fn install_version(version: &str, with_frame: bool, no_frame: bool) -> Resul
             // Best-effort: show a recent version list to help the user pick
             // one. A failure here is informational.
             if let Ok(releases) =
-                github_client.get_releases("Ivan-Pasco", "clean-language-compiler")
+                github_client.get_releases("Ivan-Pasco", "clean-language-compiler-old")
             {
                 if !releases.is_empty() {
                     println!("Available versions (recent):");
@@ -77,7 +77,7 @@ pub fn install_version(version: &str, with_frame: bool, no_frame: bool) -> Resul
                 }
             }
             println!("   Please check the repository manually:");
-            println!("   https://github.com/Ivan-Pasco/clean-language-compiler/releases");
+            println!("   https://github.com/Ivan-Pasco/clean-language-compiler-old/releases");
             return Err(CleenError::VersionNotFound {
                 version: clean_version.clone(),
             });

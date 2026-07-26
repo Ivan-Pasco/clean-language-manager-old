@@ -351,7 +351,7 @@ pub fn check_for_updates() -> Result<()> {
     println!("🔄 Checking for Clean Language compiler updates...");
 
     let github = GitHubClient::new(None);
-    let releases = github.get_releases("Ivan-Pasco", "clean-language-compiler")?;
+    let releases = github.get_releases("Ivan-Pasco", "clean-language-compiler-old")?;
 
     if releases.is_empty() {
         println!("❌ No releases found");
