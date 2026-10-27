@@ -140,7 +140,9 @@ mod tests {
             .unix_permissions(0o755);
         writer.add_directory("bin/", options).expect("add dir");
         writer.start_file("bin/cln", options).expect("start file");
-        writer.write_all(b"compiler-binary-bytes").expect("write file");
+        writer
+            .write_all(b"compiler-binary-bytes")
+            .expect("write file");
         writer.finish().expect("finish zip");
 
         let destination = tmp.path().join("out");
@@ -158,8 +160,15 @@ mod tests {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let mode = std::fs::metadata(&extracted).expect("metadata").permissions().mode();
-            assert_eq!(mode & 0o777, 0o755, "executable bit must survive extraction");
+            let mode = std::fs::metadata(&extracted)
+                .expect("metadata")
+                .permissions()
+                .mode();
+            assert_eq!(
+                mode & 0o777,
+                0o755,
+                "executable bit must survive extraction"
+            );
         }
     }
 }
