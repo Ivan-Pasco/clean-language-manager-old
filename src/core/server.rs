@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 const SERVER_REPO_OWNER: &str = "Ivan-Pasco";
-const SERVER_REPO_NAME: &str = "clean-server";
+const SERVER_REPO_NAME: &str = "clean-server-old";
 
 /// Get the directory where server versions are installed
 fn get_server_versions_dir(config: &Config) -> PathBuf {

@@ -10,7 +10,7 @@ fn get_pid_file_path() -> PathBuf {
 }
 
 const FRAME_REPO_OWNER: &str = "Ivan-Pasco";
-const FRAME_REPO_NAME: &str = "cleen-framework";
+const FRAME_REPO_NAME: &str = "cleen-framework-old";
 
 /// Filename for the per-frame-version manifest that records which plugin
 /// versions belong to a given meta-bundle. Lives at
