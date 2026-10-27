@@ -98,7 +98,7 @@ impl Downloader {
                 None => continue,
             };
 
-            if file.name().ends_with('/') {
+            if file.is_dir() {
                 std::fs::create_dir_all(&outpath)?;
             } else {
                 if let Some(p) = outpath.parent() {
@@ -119,5 +119,47 @@ impl Downloader {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use zip::write::SimpleFileOptions;
+    use zip::{CompressionMethod, ZipWriter};
+
+    #[test]
+    fn extract_zip_restores_directories_files_and_permissions() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let archive_path = tmp.path().join("release.zip");
+
+        let mut writer = ZipWriter::new(File::create(&archive_path).expect("create zip"));
+        let options = SimpleFileOptions::default()
+            .compression_method(CompressionMethod::Deflated)
+            .unix_permissions(0o755);
+        writer.add_directory("bin/", options).expect("add dir");
+        writer.start_file("bin/cln", options).expect("start file");
+        writer.write_all(b"compiler-binary-bytes").expect("write file");
+        writer.finish().expect("finish zip");
+
+        let destination = tmp.path().join("out");
+        Downloader::new()
+            .extract_archive(&archive_path, &destination)
+            .expect("extract zip");
+
+        assert!(destination.join("bin").is_dir());
+        let extracted = destination.join("bin/cln");
+        assert_eq!(
+            std::fs::read(&extracted).expect("read extracted file"),
+            b"compiler-binary-bytes"
+        );
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(&extracted).expect("metadata").permissions().mode();
+            assert_eq!(mode & 0o777, 0o755, "executable bit must survive extraction");
+        }
     }
 }

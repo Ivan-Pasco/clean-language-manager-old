@@ -1,6 +1,6 @@
 [package]
 name = "cleen"
-version = "0.5.30"
+version = "0.5.31"
 authors = ["Clean Language Team"]
 edition = "2021"
 description = "A version manager for Clean Language compiler"
@@ -46,7 +46,7 @@ chrono = { version = "0.4", features = ["serde"] }
 # Archive handling - updated versions
 tar = "0.4"
 flate2 = "1.0"
-zip = "2.2"
+zip = { version = "9", default-features = false, features = ["deflate"] }
 
 # Hashing (used for opaque project_hash in heartbeat telemetry)
 sha2 = "0.10"
