@@ -6,7 +6,7 @@ pub fn update_self_auto() -> Result<()> {
     println!("🔄 Checking for cleen updates...");
 
     let github = GitHubClient::new(None);
-    let releases = github.get_releases("Ivan-Pasco", "clean-language-manager")?;
+    let releases = github.get_releases("Ivan-Pasco", "clean-language-manager-old")?;
 
     if releases.is_empty() {
         println!("❌ No releases found for cleen");
