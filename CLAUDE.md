@@ -115,7 +115,7 @@ cleen sync                # Install from .cleanversion
 - `src/error.rs` - Comprehensive error handling
 
 **Integration Status:**
-- ✅ GitHub API integration working (`Ivan-Pasco/clean-language-compiler`)
+- ✅ GitHub API integration working (`Ivan-Pasco/clean-language-compiler-old`)
 - ✅ Cross-platform binary downloads (Linux, macOS, Windows)
 - ✅ Shell environment setup (bash, zsh, fish)
 - ✅ Project-specific version files (`.cleanlanguage/.cleanversion`)

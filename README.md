@@ -8,12 +8,12 @@ A cross-platform version manager for the Clean Language compiler, similar to rus
 
 **Unix/Linux/macOS:**
 ```bash
-curl -sSL https://github.com/Ivan-Pasco/clean-language-manager/releases/latest/download/install.sh | bash
+curl -sSL https://github.com/Ivan-Pasco/clean-language-manager-old/releases/latest/download/install.sh | bash
 ```
 
 **Windows PowerShell:**
 ```powershell
-iwr https://github.com/Ivan-Pasco/clean-language-manager/releases/latest/download/install.ps1 | iex
+iwr https://github.com/Ivan-Pasco/clean-language-manager-old/releases/latest/download/install.ps1 | iex
 ```
 
 ### 🚀 **NEW: Fully Automated Setup**
@@ -85,17 +85,17 @@ cln --version
 
 #### Unix/Linux/macOS
 ```bash
-curl -sSL https://github.com/Ivan-Pasco/clean-language-manager/releases/latest/download/install.sh | bash
+curl -sSL https://github.com/Ivan-Pasco/clean-language-manager-old/releases/latest/download/install.sh | bash
 ```
 
 #### Windows (PowerShell)
 ```powershell
-iwr https://github.com/Ivan-Pasco/clean-language-manager/releases/latest/download/install.ps1 | iex
+iwr https://github.com/Ivan-Pasco/clean-language-manager-old/releases/latest/download/install.ps1 | iex
 ```
 
 ### Manual Installation
 
-1. **Download** the appropriate binary for your platform from [Releases](https://github.com/Ivan-Pasco/clean-language-manager/releases/latest):
+1. **Download** the appropriate binary for your platform from [Releases](https://github.com/Ivan-Pasco/clean-language-manager-old/releases/latest):
    - **Linux (x86_64)**: `cleen-linux-x86_64.tar.gz`
    - **macOS (Intel)**: `cleen-macos-x86_64.tar.gz`
    - **macOS (Apple Silicon)**: `cleen-macos-aarch64.tar.gz`
@@ -128,7 +128,7 @@ iwr https://github.com/Ivan-Pasco/clean-language-manager/releases/latest/downloa
 ### From Source
 
 ```bash
-git clone https://github.com/Ivan-Pasco/clean-language-manager.git
+git clone https://github.com/Ivan-Pasco/clean-language-manager-old.git
 cd clean-language-manager
 cargo build --release
 cp target/release/cleen ~/.local/bin/  # or your preferred location
@@ -243,7 +243,7 @@ cargo build --release
 
 ## Related Projects
 
-- [Clean Language Compiler](https://github.com/Ivan-Pasco/clean-language-compiler) - The main compiler this tool manages
+- [Clean Language Compiler](https://github.com/Ivan-Pasco/clean-language-compiler-old) - The main compiler this tool manages
 
 ## License
 

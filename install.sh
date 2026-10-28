@@ -13,7 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-REPO="Ivan-Pasco/clean-language-manager"  # Update this to actual repo
+REPO="Ivan-Pasco/clean-language-manager-old"
 BINARY_NAME="cleen"
 INSTALL_DIR="$HOME/.local/bin"
 

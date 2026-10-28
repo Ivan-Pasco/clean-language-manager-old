@@ -3,7 +3,7 @@
 
 param(
     [string]$InstallDir = "$env:LOCALAPPDATA\cleen\bin",
-    [string]$Repo = "Ivan-Pasco/clean-language-manager"  # Update this to actual repo
+    [string]$Repo = "Ivan-Pasco/clean-language-manager-old"
 )
 
 # Configuration
