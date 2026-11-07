@@ -1,4 +1,9 @@
-use crate::core::{compatibility, config::Config, download::Downloader, github::GitHubClient};
+use crate::core::{
+    compatibility,
+    config::Config,
+    download::Downloader,
+    github::{self, GitHubClient},
+};
 use crate::error::{CleenError, Result};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -78,11 +83,11 @@ pub fn install_frame(version: Option<&str>, skip_compatibility_check: bool) -> R
     // `{"message": "..."}` on rate-limit and gets deserialized as
     // `invalid type: map, expected a sequence`. See CLEEN-FRAME-INSTALL-BROKEN.
     let frame_version = if let Some(v) = version {
-        if v.eq_ignore_ascii_case("latest") {
+        if github::is_latest_request(v) {
             println!("Fetching latest Frame release...");
-            match github_client.get_latest_release(FRAME_REPO_OWNER, FRAME_REPO_NAME) {
-                Ok(release) => {
-                    let latest = release.tag_name.trim_start_matches('v').to_string();
+            match github_client.get_latest_tag(FRAME_REPO_OWNER, FRAME_REPO_NAME) {
+                Ok(tag) => {
+                    let latest = github::tag_to_version(&tag);
                     println!("Resolved latest version: {latest}");
                     latest
                 }

@@ -1,5 +1,9 @@
 use crate::core::{
-    config::Config, download::Downloader, frame, github::GitHubClient, version::normalize,
+    config::Config,
+    download::Downloader,
+    frame,
+    github::{self, GitHubClient},
+    version::normalize,
 };
 use crate::error::{CleenError, Result};
 use dialoguer::Confirm;
@@ -13,7 +17,7 @@ pub fn install_version(version: &str, with_frame: bool, no_frame: bool) -> Resul
     let downloader = Downloader::new();
 
     // Resolve version (handle "latest") first and normalize to GitHub format
-    let github_version = if version == "latest" {
+    let github_version = if github::is_latest_request(version) {
         println!("Fetching latest release...");
         match github_client.get_latest_release("Ivan-Pasco", "clean-language-compiler-old") {
             Ok(release) => {

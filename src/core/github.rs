@@ -118,6 +118,18 @@ fn curl_with_status(url: &str) -> Result<(Option<i32>, String)> {
     Ok((status_code, body))
 }
 
+/// True when a user-supplied version argument asks for the newest release.
+/// Shared by `cleen install`, `cleen frame install` and `cleen server install`
+/// so all three accept `latest` the same way.
+pub fn is_latest_request(version: &str) -> bool {
+    version.eq_ignore_ascii_case("latest")
+}
+
+/// Strip the `v` prefix from a release tag (`v1.9.117` -> `1.9.117`).
+pub fn tag_to_version(tag: &str) -> String {
+    tag.trim_start_matches('v').to_string()
+}
+
 impl GitHubClient {
     pub fn new(github_token: Option<String>) -> Self {
         Self { github_token }
@@ -133,6 +145,11 @@ impl GitHubClient {
         let url = format!("https://api.github.com/repos/{repo_owner}/{repo_name}/releases/latest");
         let (status, body) = curl_with_status(&url)?;
         parse_github_response::<Release>(status, &body)
+    }
+
+    /// Tag of the newest published release (`/releases/latest`), e.g. `v1.9.117`.
+    pub fn get_latest_tag(&self, repo_owner: &str, repo_name: &str) -> Result<String> {
+        Ok(self.get_latest_release(repo_owner, repo_name)?.tag_name)
     }
 
     /// Fetch a single release by tag. Uses the /releases/tags/<tag> endpoint,
@@ -210,6 +227,20 @@ mod tests {
         "message": "Not Found",
         "documentation_url": "https://docs.github.com/rest"
     }"#;
+
+    #[test]
+    fn latest_request_is_case_insensitive() {
+        assert!(is_latest_request("latest"));
+        assert!(is_latest_request("Latest"));
+        assert!(!is_latest_request("1.9.117"));
+        assert!(!is_latest_request("vlatest"));
+    }
+
+    #[test]
+    fn tag_to_version_strips_prefix() {
+        assert_eq!(tag_to_version("v1.9.117"), "1.9.117");
+        assert_eq!(tag_to_version("1.9.117"), "1.9.117");
+    }
 
     #[test]
     fn parses_valid_single_release() {

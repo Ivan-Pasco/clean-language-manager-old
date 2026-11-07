@@ -1,5 +1,10 @@
-use crate::core::{config::Config, download::Downloader, github::GitHubClient};
+use crate::core::{
+    config::Config,
+    download::Downloader,
+    github::{self, GitHubClient},
+};
 use crate::error::{CleenError, Result};
+use crate::utils::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -16,53 +21,95 @@ fn get_server_version_dir(config: &Config, version: &str) -> PathBuf {
     get_server_versions_dir(config).join(version)
 }
 
+/// File name of the server binary on this platform
+fn server_binary_name() -> &'static str {
+    if cfg!(windows) {
+        "clean-server.exe"
+    } else {
+        "clean-server"
+    }
+}
+
 /// Get the path to the active server binary
 fn get_server_binary_path(config: &Config) -> Option<PathBuf> {
-    config.server_version.as_ref().map(|v| {
-        let version_dir = get_server_version_dir(config, v);
-        if cfg!(windows) {
-            version_dir.join("clean-server.exe")
-        } else {
-            version_dir.join("clean-server")
+    config
+        .server_version
+        .as_ref()
+        .map(|v| get_server_version_dir(config, v).join(server_binary_name()))
+}
+
+/// Resolve the version argument of `cleen server install`.
+///
+/// `None` and `latest` (any case) resolve through `fetch_latest_tag` — the
+/// same `/releases/latest` lookup the compiler and Frame installs use. Any
+/// other value is taken as an explicit version, with a leading `v` removed.
+fn resolve_server_version<F>(requested: Option<&str>, fetch_latest_tag: F) -> Result<String>
+where
+    F: FnOnce() -> anyhow::Result<String>,
+{
+    match requested {
+        Some(v) if !github::is_latest_request(v) => Ok(github::tag_to_version(v)),
+        _ => {
+            let tag = fetch_latest_tag().map_err(|e| CleenError::GitHubError {
+                message: format!(
+                    "Unable to fetch the latest Clean Server release from \
+                     https://github.com/{SERVER_REPO_OWNER}/{SERVER_REPO_NAME}/releases: {e}"
+                ),
+            })?;
+            Ok(github::tag_to_version(&tag))
         }
-    })
+    }
+}
+
+/// Point `<cleen_dir>/bin/clean-server` at the binary of an installed version.
+///
+/// The old entry is never written into: a running server keeps its inode,
+/// and macOS kills a process whose executable is overwritten in place. On
+/// Unix a symlink is created at a temp name and renamed over the old entry;
+/// on Windows the old entry is removed and the binary copied.
+fn activate_server_binary(cleen_dir: &Path, version: &str) -> Result<PathBuf> {
+    let name = server_binary_name();
+    let target = cleen_dir.join("server").join(version).join(name);
+    if !target.is_file() {
+        return Err(CleenError::ServerVersionNotInstalled {
+            version: version.to_string(),
+        });
+    }
+
+    let bin_dir = cleen_dir.join("bin");
+    fs::ensure_dir_exists(&bin_dir)?;
+    let link = bin_dir.join(name);
+
+    #[cfg(unix)]
+    {
+        if fs::atomic_replace_symlink(&link, &target).is_err() {
+            // A provenance-locked regular file cannot be renamed over on
+            // macOS Sequoia; move the bin dir aside and retry.
+            fs::evict_locked_shims(&bin_dir, &[name])?;
+            fs::atomic_replace_symlink(&link, &target)?;
+        }
+    }
+    #[cfg(windows)]
+    {
+        fs::remove_path_if_exists(&link)?;
+        std::fs::copy(&target, &link)?;
+    }
+
+    Ok(link)
 }
 
 /// Install Clean Server
 pub fn install_server(version: Option<&str>) -> Result<()> {
     let mut config = Config::load()?;
 
-    // Determine version to install
-    let server_version = if let Some(v) = version {
-        v.to_string()
-    } else {
-        // Get latest version from GitHub
-        let github_client = GitHubClient::new(config.github_api_token.clone());
+    // Determine version to install (`latest` or no argument -> newest release)
+    let github_client = GitHubClient::new(config.github_api_token.clone());
+    if version.is_none_or(github::is_latest_request) {
         println!("Fetching latest Clean Server version...");
-
-        let releases = match github_client.get_releases(SERVER_REPO_OWNER, SERVER_REPO_NAME) {
-            Ok(releases) => releases,
-            Err(e) => {
-                println!("⚠️  Unable to fetch releases from GitHub: {e}");
-                println!(
-                    "   Repository: https://github.com/{SERVER_REPO_OWNER}/{SERVER_REPO_NAME}/releases"
-                );
-                return Ok(());
-            }
-        };
-
-        if releases.is_empty() {
-            println!("⚠️  No releases found for Clean Server.");
-            println!(
-                "   Repository: https://github.com/{SERVER_REPO_OWNER}/{SERVER_REPO_NAME}/releases"
-            );
-            return Ok(());
-        }
-
-        // Get the latest (first) release
-        let latest = &releases[0];
-        latest.tag_name.trim_start_matches('v').to_string()
-    };
+    }
+    let server_version = resolve_server_version(version, || {
+        github_client.get_latest_tag(SERVER_REPO_OWNER, SERVER_REPO_NAME)
+    })?;
 
     println!("Installing Clean Server version: {server_version}");
 
@@ -73,6 +120,7 @@ pub fn install_server(version: Option<&str>) -> Result<()> {
 
         // Set as active if no version is active
         if config.server_version.is_none() {
+            activate_server_binary(&config.cleen_dir, &server_version)?;
             config.server_version = Some(server_version.clone());
             config.save()?;
             println!("✓ Set {server_version} as active version");
@@ -80,24 +128,12 @@ pub fn install_server(version: Option<&str>) -> Result<()> {
         return Ok(());
     }
 
-    // Fetch releases from GitHub
-    let github_client = GitHubClient::new(config.github_api_token.clone());
-    println!("Fetching Clean Server releases...");
-
-    let releases = match github_client.get_releases(SERVER_REPO_OWNER, SERVER_REPO_NAME) {
-        Ok(releases) => releases,
-        Err(e) => {
-            println!("⚠️  Unable to fetch releases from GitHub: {e}");
-            return Ok(());
-        }
-    };
-
-    // Find the specified version
-    let tag_name = format!("v{}", server_version.trim_start_matches('v'));
-    let release = releases
-        .iter()
-        .find(|r| r.tag_name == tag_name || r.tag_name == server_version)
-        .ok_or_else(|| CleenError::ServerVersionNotFound {
+    // Fetch the release by tag (single, unpaginated lookup)
+    println!("Fetching Clean Server release v{server_version}...");
+    let tag_name = format!("v{server_version}");
+    let release = github_client
+        .get_release_by_tag(SERVER_REPO_OWNER, SERVER_REPO_NAME, &tag_name)
+        .map_err(|_| CleenError::ServerVersionNotFound {
             version: server_version.clone(),
         })?;
 
@@ -132,7 +168,7 @@ pub fn install_server(version: Option<&str>) -> Result<()> {
     // Make binary executable on Unix
     #[cfg(unix)]
     {
-        let binary_path = version_dir.join("clean-server");
+        let binary_path = version_dir.join(server_binary_name());
         if binary_path.exists() {
             use std::os::unix::fs::PermissionsExt;
             let mut perms = std::fs::metadata(&binary_path)?.permissions();
@@ -145,6 +181,7 @@ pub fn install_server(version: Option<&str>) -> Result<()> {
 
     // Set as active version if none is set
     if config.server_version.is_none() {
+        activate_server_binary(&config.cleen_dir, &server_version)?;
         config.server_version = Some(server_version.clone());
         config.save()?;
         println!("✓ Set {server_version} as active version");
@@ -206,10 +243,16 @@ pub fn use_version(version: &str) -> Result<()> {
         });
     }
 
+    let link = activate_server_binary(&config.cleen_dir, version)?;
     config.server_version = Some(version.to_string());
     config.save()?;
 
     println!("✓ Now using Clean Server {version}");
+    println!(
+        "   {} -> {}",
+        link.display(),
+        version_dir.join(server_binary_name()).display()
+    );
 
     Ok(())
 }
@@ -230,6 +273,7 @@ pub fn uninstall_version(version: &str) -> Result<()> {
 
     // Clear active version if this was it
     if config.server_version.as_deref() == Some(version) {
+        fs::remove_path_if_exists(&config.get_bin_dir().join(server_binary_name()))?;
         config.server_version = None;
         config.save()?;
         println!("⚠️  Uninstalled active version. Run 'cleen server use <version>' to set a new active version.");
@@ -408,4 +452,124 @@ fn version_compare(a: &str, b: &str) -> std::cmp::Ordering {
     let vb = parse(b);
 
     va.cmp(&vb)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::Cell;
+
+    #[test]
+    fn server_repo_is_the_old_toolchain_repo() {
+        assert_eq!(SERVER_REPO_OWNER, "Ivan-Pasco");
+        assert_eq!(SERVER_REPO_NAME, "clean-server-old");
+    }
+
+    // Regression: issue #1 — `cleen server install latest` looked for a
+    // release tagged `vlatest` instead of resolving the newest release.
+    #[test]
+    fn latest_resolves_through_the_latest_release_lookup() {
+        let called = Cell::new(false);
+        let v = resolve_server_version(Some("latest"), || {
+            called.set(true);
+            Ok("v1.9.117".to_string())
+        })
+        .unwrap();
+        assert!(called.get());
+        assert_eq!(v, "1.9.117");
+
+        let v = resolve_server_version(Some("LATEST"), || Ok("v2.0.0".to_string())).unwrap();
+        assert_eq!(v, "2.0.0");
+    }
+
+    #[test]
+    fn no_version_resolves_to_latest() {
+        let v = resolve_server_version(None, || Ok("v1.9.117".to_string())).unwrap();
+        assert_eq!(v, "1.9.117");
+    }
+
+    #[test]
+    fn explicit_version_does_not_query_latest() {
+        let v = resolve_server_version(Some("v1.9.115"), || {
+            panic!("latest lookup must not run for an explicit version")
+        })
+        .unwrap();
+        assert_eq!(v, "1.9.115");
+        let v = resolve_server_version(Some("1.9.115"), || unreachable!()).unwrap();
+        assert_eq!(v, "1.9.115");
+    }
+
+    #[test]
+    fn latest_lookup_failure_is_an_error() {
+        assert!(
+            resolve_server_version(Some("latest"), || Err(anyhow::anyhow!("offline"))).is_err()
+        );
+    }
+
+    fn write_server(cleen_dir: &Path, version: &str) {
+        let dir = cleen_dir.join("server").join(version);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join(server_binary_name()), format!("server {version}")).unwrap();
+    }
+
+    fn active_contents(cleen_dir: &Path) -> String {
+        std::fs::read_to_string(cleen_dir.join("bin").join(server_binary_name())).unwrap()
+    }
+
+    // Regression: issue #2 — `cleen server use` only wrote config.json and
+    // never switched ~/.cleen/bin/clean-server.
+    #[test]
+    fn activate_switches_the_bin_binary_between_versions() {
+        let home = tempfile::tempdir().unwrap();
+        let cleen_dir = home.path();
+        write_server(cleen_dir, "1.9.115");
+        write_server(cleen_dir, "1.9.117");
+
+        activate_server_binary(cleen_dir, "1.9.117").unwrap();
+        assert_eq!(active_contents(cleen_dir), "server 1.9.117");
+
+        activate_server_binary(cleen_dir, "1.9.115").unwrap();
+        assert_eq!(active_contents(cleen_dir), "server 1.9.115");
+
+        activate_server_binary(cleen_dir, "1.9.117").unwrap();
+        assert_eq!(active_contents(cleen_dir), "server 1.9.117");
+    }
+
+    // A running server binary must never be overwritten in place (macOS
+    // kills a process whose executable pages change). The old file, which a
+    // running process may still hold, must keep its original contents.
+    #[test]
+    fn activate_never_writes_into_the_previous_binary() {
+        let home = tempfile::tempdir().unwrap();
+        let cleen_dir = home.path();
+        write_server(cleen_dir, "1.9.117");
+
+        let bin_dir = cleen_dir.join("bin");
+        std::fs::create_dir_all(&bin_dir).unwrap();
+        let active = bin_dir.join(server_binary_name());
+        std::fs::write(&active, "hand-copied 1.9.115").unwrap();
+        // Stand-in for the running process's open handle on the old inode.
+        let held = cleen_dir.join("held-by-running-process");
+        std::fs::hard_link(&active, &held).unwrap();
+
+        activate_server_binary(cleen_dir, "1.9.117").unwrap();
+
+        assert_eq!(active_contents(cleen_dir), "server 1.9.117");
+        assert_eq!(
+            std::fs::read_to_string(&held).unwrap(),
+            "hand-copied 1.9.115"
+        );
+    }
+
+    #[test]
+    fn activate_missing_version_fails_and_leaves_bin_alone() {
+        let home = tempfile::tempdir().unwrap();
+        let cleen_dir = home.path();
+        write_server(cleen_dir, "1.9.115");
+        activate_server_binary(cleen_dir, "1.9.115").unwrap();
+
+        let err = activate_server_binary(cleen_dir, "9.9.9").unwrap_err();
+        assert!(matches!(err, CleenError::ServerVersionNotInstalled { .. }));
+        assert_eq!(active_contents(cleen_dir), "server 1.9.115");
+    }
 }
