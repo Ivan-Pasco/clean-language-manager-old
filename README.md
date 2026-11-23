@@ -163,6 +163,17 @@ cleen available
 cleen uninstall 1.2.3
 ```
 
+### News and Security Alerts (optional)
+```bash
+# Open the sign-up page for security alerts and news about the new toolchain
+cleen register
+
+# Print the sign-up link instead of opening the browser
+cleen register --print
+```
+
+Sign-up happens on accounts.cleanlanguage.dev; `cleen` sends no personal data. After a successful install, `cleen` shows a one-line reminder once, only in an interactive terminal and never in CI. Set `CLEEN_REGISTER_HINT=off` to turn it off.
+
 ### Getting Help
 ```bash
 # Show help for all commands

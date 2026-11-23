@@ -6,6 +6,7 @@ pub mod install;
 pub mod list;
 pub mod local;
 pub mod plugin;
+pub mod register;
 pub mod sync;
 pub mod test;
 pub mod uninstall;

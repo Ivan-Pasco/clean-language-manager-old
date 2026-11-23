@@ -209,6 +209,10 @@ pub fn install_version(version: &str, with_frame: bool, no_frame: bool) -> Resul
     // bugs the server advanced as a result. Silent on transport failure.
     crate::core::heartbeat::send_install();
 
+    // One-time, optional pointer to `cleen register`. Silent in CI and
+    // non-interactive sessions.
+    crate::commands::register::maybe_show_hint();
+
     // Reload after install so the new version is counted as active when
     // computing the cleanup hint below.
     let config = Config::load()?;

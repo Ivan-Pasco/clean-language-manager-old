@@ -72,6 +72,12 @@ enum Commands {
     Update,
     /// Update cleen itself to the latest version
     SelfUpdate,
+    /// Sign up for Clean Language news and security alerts (optional)
+    Register {
+        /// Print the sign-up link instead of opening the browser
+        #[clap(long)]
+        print: bool,
+    },
     /// Clean up old compiler and plugin versions
     Cleanup {
         /// Actually remove versions (without this flag, shows what would be removed)
@@ -300,6 +306,9 @@ fn main() -> Result<()> {
         Commands::Update => commands::update::check_for_updates().map_err(|e| anyhow::anyhow!(e)),
         Commands::SelfUpdate => {
             commands::update::update_self_auto().map_err(|e| anyhow::anyhow!(e))
+        }
+        Commands::Register { print } => {
+            commands::register::register(print).map_err(|e| anyhow::anyhow!(e))
         }
         Commands::Cleanup {
             confirm,
