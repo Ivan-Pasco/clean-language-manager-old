@@ -172,7 +172,7 @@ cleen register
 cleen register --print
 ```
 
-Sign-up happens on accounts.cleanlanguage.dev; `cleen` sends no personal data. After a successful install, `cleen` shows a one-line reminder once, only in an interactive terminal and never in CI. Set `CLEEN_REGISTER_HINT=off` to turn it off.
+Sign-up happens on account.cleanlanguage.dev; `cleen` sends no personal data. After a successful install, `cleen` shows a one-line reminder once, only in an interactive terminal and never in CI. Set `CLEEN_REGISTER_HINT=off` to turn it off.
 
 ### Getting Help
 ```bash

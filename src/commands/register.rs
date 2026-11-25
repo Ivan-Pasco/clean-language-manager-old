@@ -2,7 +2,7 @@
 //! security alerts, plus a one-time hint after a successful install.
 //!
 //! The manager never collects personal data itself. It opens the sign-up
-//! page on accounts.cleanlanguage.dev, which owns all user information
+//! page on account.cleanlanguage.dev, which owns all user information
 //! (name, email, phone, subscriptions, consent). The only thing passed in
 //! the URL is where the visit came from and the cleen version.
 //!
@@ -16,7 +16,7 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-const REGISTER_URL: &str = "https://accounts.cleanlanguage.dev/register";
+const REGISTER_URL: &str = "https://account.cleanlanguage.dev/register";
 
 /// Environment variables that mark a CI or automated build. Any of them
 /// being set (to anything) suppresses the hint.
@@ -230,7 +230,7 @@ mod tests {
     fn register_url_carries_only_source_and_version() {
         assert_eq!(
             register_url("1.2.3"),
-            "https://accounts.cleanlanguage.dev/register?source=cleen&cleen_version=1.2.3"
+            "https://account.cleanlanguage.dev/register?source=cleen&cleen_version=1.2.3"
         );
     }
 
