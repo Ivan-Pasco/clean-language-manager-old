@@ -1,5 +1,5 @@
 //! `cleen register` — optional sign-up for Clean Language news and
-//! security alerts, plus a one-time hint after a successful install.
+//! security alerts, plus a one-time email question after a successful install.
 //!
 //! The manager stores no personal data. By default it opens the sign-up
 //! page on account.cleanlanguage.dev, which owns all user information
@@ -11,7 +11,8 @@
 //! service and keeps nothing locally. Nothing is subscribed until the
 //! person clicks the confirmation email.
 //!
-//! The hint is shown once, only in an interactive terminal, never in CI.
+//! After the first successful install, cleen asks once for an email
+//! (Enter skips), only in an interactive terminal, never in CI.
 //! Set `CLEEN_REGISTER_HINT=off` to suppress it entirely.
 
 use crate::error::Result;
@@ -259,21 +260,58 @@ fn interpret_response(code: u16, body: &str) -> Result<SignupOutcome> {
     }
 }
 
-/// Print the one-time register hint after a successful install, if it
-/// has not been shown before and the session is interactive.
+/// After the first successful install, ask once for an email to send
+/// security alerts and early news to. Enter skips. Only in an interactive
+/// terminal, never in CI, and never again after it was asked or after
+/// `cleen register` was run. A failed sign-up never fails the install.
 pub fn maybe_show_hint() {
     let state = load_state();
-    if !should_show_hint(&state, std::io::stdout().is_terminal(), &env_lookup) {
+    let interactive = std::io::stdout().is_terminal() && std::io::stdin().is_terminal();
+    if !should_show_hint(&state, interactive, &env_lookup) {
         return;
     }
 
-    println!();
-    println!("📬 A new Clean Language toolchain is coming soon.");
-    println!("   Get early news and security alerts: cleen register (optional)");
-
+    // Recorded before asking, so the question is asked once even if the
+    // person interrupts it.
     let mut state = state;
     state.hint_shown_at = Some(now_epoch_secs());
     save_state(&state);
+
+    println!();
+    println!("📬 A new Clean Language toolchain is coming soon.");
+    println!("   Get security alerts and early news by email (optional).");
+
+    let Some(email) = ask("   Your email (press Enter to skip)") else {
+        println!("   Skipped. You can sign up any time with: cleen register");
+        return;
+    };
+    let Some(name) = ask("   Your name") else {
+        println!("   Skipped. You can sign up any time with: cleen register");
+        return;
+    };
+
+    let signup = EmailSignup {
+        email,
+        name,
+        phone: None,
+        releases: false,
+        news: false,
+    };
+    if let Err(e) = register_by_email(signup) {
+        println!("   ⚠️  {e}");
+        println!("   You can try again any time with: cleen register");
+    }
+}
+
+/// One line of input; `None` when left empty or the terminal closes.
+fn ask(prompt: &str) -> Option<String> {
+    dialoguer::Input::<String>::new()
+        .with_prompt(prompt)
+        .allow_empty(true)
+        .interact_text()
+        .ok()
+        .map(|answer| answer.trim().to_string())
+        .filter(|answer| !answer.is_empty())
 }
 
 fn should_show_hint(state: &State, is_tty: bool, env: &dyn Fn(&str) -> Option<String>) -> bool {

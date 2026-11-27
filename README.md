@@ -175,7 +175,7 @@ cleen register --print
 cleen register --email you@example.com --name "Your Name" [--phone "+1 555 0100"] [--releases] [--news]
 ```
 
-Sign-up happens on account.cleanlanguage.dev, and nothing is subscribed until you click the confirmation email. `cleen` keeps no personal data; with `--email` it sends only what you typed to the account service. After a successful install, `cleen` shows a one-line reminder once, only in an interactive terminal and never in CI. Set `CLEEN_REGISTER_HINT=off` to turn it off.
+Sign-up happens on account.cleanlanguage.dev, and nothing is subscribed until you click the confirmation email. `cleen` keeps no personal data; with `--email` it sends only what you typed to the account service. After the first successful install, `cleen` asks once for an email for security alerts (press Enter to skip), only in an interactive terminal and never in CI. Set `CLEEN_REGISTER_HINT=off` to turn it off.
 
 ### Getting Help
 ```bash
