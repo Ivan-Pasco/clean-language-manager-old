@@ -77,6 +77,21 @@ enum Commands {
         /// Print the sign-up link instead of opening the browser
         #[clap(long)]
         print: bool,
+        /// Sign up from the terminal with this email (no browser needed)
+        #[clap(long, requires = "name", conflicts_with = "print")]
+        email: Option<String>,
+        /// Your name (used with --email)
+        #[clap(long, requires = "email")]
+        name: Option<String>,
+        /// Phone number, optional (used with --email)
+        #[clap(long, requires = "email")]
+        phone: Option<String>,
+        /// Also get release notes by email (used with --email)
+        #[clap(long, requires = "email")]
+        releases: bool,
+        /// Also get the monthly news email (used with --email)
+        #[clap(long, requires = "email")]
+        news: bool,
     },
     /// Clean up old compiler and plugin versions
     Cleanup {
@@ -307,9 +322,24 @@ fn main() -> Result<()> {
         Commands::SelfUpdate => {
             commands::update::update_self_auto().map_err(|e| anyhow::anyhow!(e))
         }
-        Commands::Register { print } => {
-            commands::register::register(print).map_err(|e| anyhow::anyhow!(e))
+        Commands::Register {
+            print,
+            email,
+            name,
+            phone,
+            releases,
+            news,
+        } => match email {
+            Some(email) => commands::register::register_by_email(commands::register::EmailSignup {
+                email,
+                name: name.unwrap_or_default(),
+                phone,
+                releases,
+                news,
+            }),
+            None => commands::register::register(print),
         }
+        .map_err(|e| anyhow::anyhow!(e)),
         Commands::Cleanup {
             confirm,
             keep,

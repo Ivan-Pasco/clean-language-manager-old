@@ -156,6 +156,10 @@ pub enum CleenError {
     // Test errors
     #[error("Test error: {message}")]
     TestError { message: String },
+
+    // Register errors
+    #[error("Sign-up failed: {message}")]
+    RegisterError { message: String },
 }
 
 impl From<anyhow::Error> for CleenError {
